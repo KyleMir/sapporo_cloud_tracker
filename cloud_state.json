@@ -1,5 +1,5 @@
 {
-  "consecutive_errors": 2,
-  "last_error_at": "2026-11-21 20:10:55",
-  "last_error_msg": "dep=no_flight_cards_parsed: Naver | 사용자 링크 | 로그인 | 서비스 더보기 | 여행상품 | 여행정보 | 0 | 로그인 후 등급확인 | 마이페이지 | 여행핫딜 | 항공 | 호텔 | 패키지 | For U | 16 | 왕복 | 편도 | 다구간 | 인천 | ICN, ret=no_flight_cards_parsed: Naver | 사용자 링크 | 로그인 | 서비스 더보기 | 여행상품 | 여행정보 | 0 | 로그인 후 등급확인 | 마이페이지 | 여행핫딜 | 항공 | 호텔 | 패키지 | For U | 16 | 왕복 | 편도 | 다구간 | 하코다테 | HKD"
+  "consecutive_errors": 3,
+  "last_error_at": "2026-11-21 20:27:32",
+  "last_error_msg": "dep=no_flight_cards_parsed: Naver | 사용자 링크 | 로그인 | 서비스 더보기 | 여행상품 | 여행정보 | 0 | 로그인 후 등급확인 | 마이페이지 | 여행핫딜 | 항공 | 호텔 | 패키지 | For U | 66 | 왕복 | 편도 | 다구간 | 인천 | ICN, ret=no_flight_cards_parsed: Naver | 사용자 링크 | 로그인 | 서비스 더보기 | 여행상품 | 여행정보 | 0 | 로그인 후 등급확인 | 마이페이지 | 여행핫딜 | 항공 | 호텔 | 패키지 | For U | 66 | 왕복 | 편도 | 다구간 | 하코다테 | HKD"
 }
