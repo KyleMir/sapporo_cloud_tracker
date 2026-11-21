@@ -182,7 +182,15 @@ async def fetch_all_routes() -> dict:
                         }""",
                         timeout=20000,
                     )
-                    await asyncio.sleep(2.0)
+                    await asyncio.sleep(1.5)
+                    # 숨겨진 '더 많은 항공편' / '더보기'가 있으면 펼쳐서 이스타항공/에어프레미아 누락 방지
+                    try:
+                        more_btn = page.locator("button:has-text('더 많은 항공편'), button:has-text('항공편 더보기'), button:has-text('more flights')").first
+                        if await more_btn.is_visible(timeout=1200):
+                            await more_btn.click()
+                            await asyncio.sleep(1.5)
+                    except Exception:
+                        pass
                 except Exception:
                     await asyncio.sleep(2.5)
 
@@ -231,56 +239,69 @@ def save_state(state: dict):
         json.dump(state, f, ensure_ascii=False, indent=2)
 
 
-def pick_morning_best(flights: list):
-    morning = [f for f in flights if f["dep_time"] <= "12:00"]
-    return morning[0] if morning else None
+def pick_airline(flights: list, keywords: tuple):
+    for f in flights:
+        name = f.get("airline", "").lower()
+        if any(k in name for k in keywords):
+            return f
+    return None
 
 
-def build_summary_text(dep_res: dict, ret_res: dict, dep07_res: dict) -> str:
+def build_pair_summary(dep_f, ret_f, label: str) -> dict:
+    if not dep_f or not ret_f:
+        return {"label": label, "available": False}
+    rt_4p = dep_f["price_4p"] + ret_f["price_4p"]
+    rt_1p = round(rt_4p / 4)
+    grand_4p = rt_4p + TRANSPORT_4P_TOTAL
+    return {
+        "label": label,
+        "available": True,
+        "dep_time": dep_f["dep_time"],
+        "dep_1p": dep_f["price"],
+        "dep_4p": dep_f["price_4p"],
+        "ret_time": ret_f["dep_time"],
+        "ret_1p": ret_f["price"],
+        "ret_4p": ret_f["price_4p"],
+        "rt_1p": rt_1p,
+        "rt_4p": rt_4p,
+        "grand_4p": grand_4p,
+    }
+
+
+def format_pair_line(pair: dict) -> str:
+    if not pair.get("available"):
+        return f"■ [{pair['label']}] 직항 매진/조회 불가"
+    return (
+        f"■ [{pair['label']}]\n"
+        f"   가는편({pair['dep_time']}) {pair['dep_1p']:,}원 + 오는편({pair['ret_time']}) {pair['ret_1p']:,}원\n"
+        f"   ➔ 1인 왕복 {pair['rt_1p']:,}원 | 4인 왕복 {pair['rt_4p']:,}원 | 총경비 {pair['grand_4p']:,}원"
+    )
+
+
+def build_summary_text(dep_res: dict, ret_res: dict, dep07_res: dict, pairs: dict) -> str:
     dep_list = dep_res.get("flights", [])
     ret_list = ret_res.get("flights", [])
     dep07_list = dep07_res.get("flights", [])
 
-    lines = ["[Google Flights 순수 직항 실시간 (네이버 실결제 기준 동일)]"]
+    lines = ["[지정 항공사 집중 감시 · 1/6(수)~1/10(일) Google Flights 기준]"]
+    lines.append(format_pair_line(pairs["airpremia_jeju"]))
+    lines.append(format_pair_line(pairs["eastar_jeju"]))
+    lines.append(f"• 4인 부대교통비 포함액: {TRANSPORT_4P_TOTAL:,}원 (JR특급+국내공항버스/KTX)")
+
     if dep_list and ret_list:
         dep_low = dep_list[0]
-        dep_morn = pick_morning_best(dep_list)
         ret_low = ret_list[0]
-
         rt_low_4p = dep_low["price_4p"] + ret_low["price_4p"]
-        rt_low_1p = round(rt_low_4p / 4)
-        grand_low_4p = rt_low_4p + TRANSPORT_4P_TOTAL
-
-        lines.append(
-            f"■ 1/6 가는편 최저: {dep_low['airline']}({dep_low['dep_time']}) 1인 {dep_low['price']:,}원 (4인 {dep_low['price_4p']:,}원)"
-        )
-        if dep_morn and (dep_morn["airline"] != dep_low["airline"] or dep_morn["dep_time"] != dep_low["dep_time"]):
-            lines.append(
-                f"■ 1/6 오전 선호: {dep_morn['airline']}({dep_morn['dep_time']}) 1인 {dep_morn['price']:,}원 (4인 {dep_morn['price_4p']:,}원)"
-            )
-        lines.append(
-            f"■ 1/10 오는편: {ret_low['airline']}({ret_low['dep_time']}) 1인 {ret_low['price']:,}원 (4인 {ret_low['price_4p']:,}원)"
-        )
         lines.append("")
-        lines.append(f"• 1인 순수 왕복: {rt_low_1p:,}원")
-        lines.append(f"• 4인 순수 왕복: {rt_low_4p:,}원")
-        lines.append(f"• 4인 부대교통비: {TRANSPORT_4P_TOTAL:,}원 (JR특급+국내공항버스/KTX)")
-        lines.append(f"• 4인 최종 실총경비: {grand_low_4p:,}원 (1인 {round(grand_low_4p / 4):,}원)")
-
-        if dep_morn and (dep_morn["airline"] != dep_low["airline"] or dep_morn["dep_time"] != dep_low["dep_time"]):
-            rt_morn_4p = dep_morn["price_4p"] + ret_low["price_4p"]
-            lines.append(
-                f"  (오전출발 시 4인 항공 {rt_morn_4p:,}원 / 총경비 {rt_morn_4p + TRANSPORT_4P_TOTAL:,}원)"
-            )
-    else:
-        lines.append("• 1/6~1/10 직항: 현재 매진 또는 조회 불가")
+        lines.append(
+            f"[전체 최저가 참고] {dep_low['airline']}({dep_low['dep_time']}) + {ret_low['airline']} ➔ 1인 {round(rt_low_4p / 4):,}원 / 4인 {rt_low_4p:,}원 (총 {rt_low_4p + TRANSPORT_4P_TOTAL:,}원)"
+        )
 
     if dep07_list and ret_list:
         d07 = dep07_list[0]
         rt07_4p = d07["price_4p"] + ret_list[0]["price_4p"]
-        lines.append("")
         lines.append(
-            f"[참고 3박4일 1/7~1/10] {d07['airline']}({d07['dep_time']}) 1인 {d07['price']:,}원 ➔ 4인 총경비 {rt07_4p + TRANSPORT_4P_TOTAL:,}원"
+            f"[3박4일 1/7~1/10 참고] {d07['airline']}({d07['dep_time']}) 1인 {d07['price']:,}원 ➔ 4인 총경비 {rt07_4p + TRANSPORT_4P_TOTAL:,}원"
         )
 
     return "\n".join(lines)
@@ -326,25 +347,82 @@ async def main():
 
     state["consecutive_errors"] = 0
 
+    dep_flights = dep_res.get("flights", [])
+    ret_flights = ret_res.get("flights", [])
+
+    ap_dep = pick_airline(dep_flights, ("에어프레미아", "air premia"))
+    es_dep = pick_airline(dep_flights, ("이스타", "eastar"))
+    jeju_ret = pick_airline(ret_flights, ("제주", "jeju"))
+
+    curr_pairs = {
+        "airpremia_jeju": build_pair_summary(ap_dep, jeju_ret, "에어프레미아+제주항공"),
+        "eastar_jeju": build_pair_summary(es_dep, jeju_ret, "이스타항공+제주항공"),
+    }
+
     curr_avail = dep_res["status"] == "ok" and ret_res["status"] == "ok"
-    curr_dep_low = dep_res["flights"][0] if dep_res["status"] == "ok" else None
-    curr_ret_low = ret_res["flights"][0] if ret_res["status"] == "ok" else None
+    curr_dep_low = dep_flights[0] if dep_flights else None
+    curr_ret_low = ret_flights[0] if ret_flights else None
     curr_4p_rt = (curr_dep_low["price_4p"] + curr_ret_low["price_4p"]) if curr_avail else None
     curr_1p_rt = round(curr_4p_rt / 4) if curr_4p_rt else None
 
     prev_avail = state.get("is_available")
     prev_1p_rt = state.get("rt_1p_lowest")
+    prev_pairs = state.get("pairs", {})
 
-    summary = build_summary_text(dep_res, ret_res, dep07_res)
+    summary = build_summary_text(dep_res, ret_res, dep07_res, curr_pairs)
     alert_title = None
     alert_msg = None
     alert_prio = "high"
     alert_tags = ["airplane"]
 
-    if prev_avail is None:
-        alert_title = "🚀 [24시간 클라우드 트래커] Google Flights 감시 가동!"
-        alert_msg = f"맥북이 꺼져 있어도 클라우드에서 정상 가격을 조회했습니다.\n\n{summary}"
+    # 지정 항공사 조합 변동 체크 (에어프레미아+제주항공, 이스타항공+제주항공)
+    pair_events = []
+    for p_key in ("airpremia_jeju", "eastar_jeju"):
+        cur_p = curr_pairs[p_key]
+        old_p = prev_pairs.get(p_key)
+        if not old_p:
+            continue
+        if old_p.get("available") and not cur_p.get("available"):
+            pair_events.append(("SOLDOUT", cur_p["label"], old_p["rt_1p"], None, 0))
+        elif not old_p.get("available") and cur_p.get("available"):
+            pair_events.append(("RESTOCK", cur_p["label"], None, cur_p["rt_1p"], 0))
+        elif old_p.get("available") and cur_p.get("available"):
+            diff_p = cur_p["rt_1p"] - old_p["rt_1p"]
+            if diff_p <= -MIN_DROP_KRW:
+                pair_events.append(("DROP", cur_p["label"], old_p["rt_1p"], cur_p["rt_1p"], -diff_p))
+            elif diff_p >= MIN_HIKE_KRW:
+                pair_events.append(("HIKE", cur_p["label"], old_p["rt_1p"], cur_p["rt_1p"], diff_p))
+
+    if prev_avail is None or not prev_pairs:
+        alert_title = "🎯 [집중 감시 가동] 에어프레미아·이스타 + 제주항공 트래킹 시작"
+        alert_msg = f"요청하신 [에어프레미아+제주항공] 및 [이스타항공+제주항공] 조합 추적을 시작했습니다.\n\n{summary}"
         alert_tags = ["rocket", "airplane"]
+    elif pair_events:
+        ev_type, ev_lbl, ev_old, ev_new, ev_diff = pair_events[0]
+        alert_prio = "urgent"
+        ev_lines = []
+        for t, lbl, o, n, d in pair_events:
+            if t == "DROP":
+                ev_lines.append(f"🎉 [{lbl}] 1인 {o:,}원 ➔ {n:,}원 (-{d:,}원 / 4인 -{d*4:,}원 인하!)")
+            elif t == "HIKE":
+                ev_lines.append(f"⚠️ [{lbl}] 1인 {o:,}원 ➔ {n:,}원 (+{d:,}원 / 4인 +{d*4:,}원 상승!)")
+            elif t == "SOLDOUT":
+                ev_lines.append(f"🚨 [{lbl}] 직항 좌석이 매진되었습니다!")
+            elif t == "RESTOCK":
+                ev_lines.append(f"🔔 [{lbl}] 취소표 재오픈! (1인 {n:,}원)")
+        if ev_type == "DROP":
+            alert_title = f"🎉 [{ev_lbl}] 가격 인하! (-{ev_diff:,}원)"
+            alert_tags = ["tada", "chart_with_downwards_trend"]
+        elif ev_type == "HIKE":
+            alert_title = f"⚠️ [{ev_lbl}] 가격 상승/싼표 소진! (+{ev_diff:,}원)"
+            alert_tags = ["warning", "chart_with_upwards_trend"]
+        elif ev_type == "SOLDOUT":
+            alert_title = f"🚨 [{ev_lbl}] 좌석 매진!"
+            alert_tags = ["sos", "x"]
+        else:
+            alert_title = f"🔔 [{ev_lbl}] 취소표 재입고!"
+            alert_tags = ["bell", "sparkles"]
+        alert_msg = "\n".join(ev_lines) + "\n\n" + summary
     elif prev_avail and not curr_avail:
         alert_title = "🚨 [전석 매진] 1/6~1/10 직항 좌석 소진!"
         alert_prio = "urgent"
@@ -359,16 +437,16 @@ async def main():
         diff = curr_1p_rt - prev_1p_rt
         if diff <= -MIN_DROP_KRW:
             save_1p = -diff
-            alert_title = f"🎉 [가격 인하] 1/6~1/10 왕복 1인 -{save_1p:,}원!"
+            alert_title = f"🎉 [전체 최저가 인하] 1/6~1/10 왕복 1인 -{save_1p:,}원!"
             alert_prio = "urgent"
             alert_tags = ["tada", "chart_with_downwards_trend"]
             alert_msg = (
-                f"실결제 최저가가 내려갔습니다!\n"
+                f"전체 최저가가 내려갔습니다!\n"
                 f"• 1인 왕복: {prev_1p_rt:,}원 ➔ {curr_1p_rt:,}원 (-{save_1p:,}원)\n"
                 f"• 4인 가족 절약: -{save_1p * 4:,}원\n\n{summary}"
             )
         elif diff >= MIN_HIKE_KRW:
-            alert_title = f"⚠️ [싼 표 소진] 1/6~1/10 왕복 1인 +{diff:,}원 상승"
+            alert_title = f"⚠️ [전체 최저가 상승] 1/6~1/10 왕복 1인 +{diff:,}원"
             alert_prio = "urgent"
             alert_tags = ["warning", "chart_with_upwards_trend"]
             alert_msg = (
@@ -378,23 +456,24 @@ async def main():
             )
 
     if force_notify and not alert_title:
-        alert_title = "🔥 [수동 확인] 1/6~1/10 홋카이도 클라우드 실시간 현황"
-        alert_msg = f"클라우드에서 정상 조회된 실시간 항공권 가격입니다.\n\n{summary}"
+        alert_title = "🔥 [수동 확인] 에어프레미아·이스타 + 제주항공 실시간 현황"
+        alert_msg = f"클라우드에서 조회된 지정 항공사 조합 현황입니다.\n\n{summary}"
 
     if alert_title:
         send_ntfy(alert_title, alert_msg, priority=alert_prio, tags=alert_tags, actions=actions)
     else:
-        print(f"No significant price change (1p RT: {curr_1p_rt} vs prev {prev_1p_rt}).")
+        print(f"No significant change. AirPremia={curr_pairs['airpremia_jeju'].get('rt_1p')}, Eastar={curr_pairs['eastar_jeju'].get('rt_1p')}")
 
     state.update({
         "updated_at": now_str,
         "source": "google_flights",
         "is_available": curr_avail,
+        "pairs": curr_pairs,
         "rt_1p_lowest": curr_1p_rt,
         "rt_4p_lowest": curr_4p_rt,
         "grand_4p_lowest": (curr_4p_rt + TRANSPORT_4P_TOTAL) if curr_4p_rt else None,
-        "dep_0106_top3": dep_res.get("flights", [])[:3],
-        "ret_0110_top2": ret_res.get("flights", [])[:2],
+        "dep_0106_top3": dep_flights[:3],
+        "ret_0110_top2": ret_flights[:2],
         "dep_0107_top2": dep07_res.get("flights", [])[:2],
     })
     save_state(state)
