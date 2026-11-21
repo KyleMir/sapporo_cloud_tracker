@@ -120,7 +120,8 @@ def parse_flights_from_text(body_text: str) -> dict:
                 })
 
     if not flights:
-        return {"status": "soldout", "flights": []}
+        snippet = " | ".join(lines[:20])[:300]
+        return {"status": "error", "reason": f"no_flight_cards_parsed: {snippet}", "flights": []}
 
     flights.sort(key=lambda x: x["price"])
     return {"status": "ok", "flights": flights}
@@ -155,12 +156,18 @@ async def fetch_all_routes() -> dict:
             page = await context.new_page()
             try:
                 await page.goto(url, wait_until="domcontentloaded", timeout=35000)
-                # 항공권 리스트 렌더링 대기 (최대 14초)
+                # 항공편 카드('성인/' 가격) 또는 '검색된 항공편이 없습니다'가 뜰 때까지 최대 22초 대기
                 try:
-                    await page.wait_for_selector("text=/직항|검색된 항공편이 없습니다/", timeout=14000)
-                    await asyncio.sleep(2.5)
+                    await page.wait_for_function(
+                        """() => {
+                            const t = document.body ? document.body.innerText : '';
+                            return t.includes('성인/') || t.includes('모든 결제수단') || t.includes('검색된 항공편이 없습니다') || t.includes('조건에 맞는 항공편이 없습니다');
+                        }""",
+                        timeout=22000,
+                    )
+                    await asyncio.sleep(2.0)
                 except Exception:
-                    await asyncio.sleep(4.0)
+                    await asyncio.sleep(3.0)
 
                 body_text = await page.inner_text("body")
                 results[key] = parse_flights_from_text(body_text)

@@ -2,8 +2,8 @@ name: Sapporo 24/7 Flight Tracker
 
 on:
   schedule:
-    # 매 15분마다 24시간 무인 실행 (UTC 기준, 상시 동작)
-    - cron: '*/15 * * * *'
+    # 매 15분마다(비혼잡 분대 7,22,37,52분) 24시간 무인 실행
+    - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
     inputs:
       force_notify:
