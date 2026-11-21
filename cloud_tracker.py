@@ -1,6 +1,7 @@
 """
-24시간 무인 클라우드 항공권 트래커 (GitHub Actions + ntfy iPhone 푸시 알림)
-- 보유 카드(KB국민 쿠팡와우 / 신한 / 모든 결제수단) 실결제 기준(&cardBenefit=0) 전용
+24시간 무인 클라우드 항공권 트래커 (GitHub Actions + Google Flights + ntfy iPhone 푸시 알림)
+- 해외 클라우드 IP 차단 없는 Google Flights로 실시간 직항 운임(4인 기준) 조회
+- iPhone 알림 예매 버튼은 보유 카드 실결제 기준(&cardBenefit=0) 네이버 항공권 링크로 직접 연결
 - 1/6(수)~1/10(일) 4박5일 최우선 감시 (1/7 목 출발 3박4일 비교 참고 포함)
 """
 import asyncio
@@ -15,11 +16,17 @@ KST = timezone(timedelta(hours=9))
 STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cloud_state.json")
 NTFY_TOPIC = os.environ.get("NTFY_TOPIC", "kylenoti_CE240803")
 
-# 감시 대상 URL (보유 카드 실결제 기준: cardBenefit=0 고정)
-URLS = {
+# Google Flights 조회 URL (성인 4인, 편도, 직항, 한국어/KRW)
+GF_URLS = {
+    "dep_0106": "https://www.google.com/travel/flights?q=Flights%20from%20ICN%20to%20CTS%20on%202027-01-06%20oneway%20nonstop%204%20adults&hl=ko&curr=KRW",
+    "ret_0110": "https://www.google.com/travel/flights?q=Flights%20from%20HKD%20to%20ICN%20on%202027-01-10%20oneway%20nonstop%204%20adults&hl=ko&curr=KRW",
+    "dep_0107": "https://www.google.com/travel/flights?q=Flights%20from%20ICN%20to%20CTS%20on%202027-01-07%20oneway%20nonstop%204%20adults&hl=ko&curr=KRW",
+}
+
+# 예매용 네이버 항공권 직통 링크 (보유 카드 실결제 기준: &cardBenefit=0)
+NAVER_URLS = {
     "dep_0106": "https://flight.naver.com/flights/international/ICN-CTS-20270106?adult=4&isDirect=true&fareType=Y&cardBenefit=0",
     "ret_0110": "https://flight.naver.com/flights/international/HKD-ICN-20270110?adult=4&isDirect=true&fareType=Y&cardBenefit=0",
-    "dep_0107": "https://flight.naver.com/flights/international/ICN-CTS-20270107?adult=4&isDirect=true&fareType=Y&cardBenefit=0",
     "multi_0106": "https://flight.naver.com/flights/international/ICN-CTS-20270106/HKD-ICN-20270110?adult=4&isDirect=true&fareType=Y&cardBenefit=0",
 }
 
@@ -27,109 +34,111 @@ URLS = {
 # 대구 3인 왕복(우등버스/KTX 43,500*2*3=261,000) + 서울 1인 왕복(17,000*2=34,000)
 # + 일본 JR 특급 호쿠토(삿포로->하코다테 96,000*4=384,000) + 기타 연결 49,200 = 728,200원
 TRANSPORT_4P_TOTAL = 728200
-TRANSPORT_1P_AVG = 182050
 
 # 알림 임계값 (1인 기준)
 MIN_DROP_KRW = 3000
 MIN_HIKE_KRW = 5000
 
-SKIP_AIRLINE_TOKENS = (
-    "CO2", "이벤트혜택", "예약 많은", "많이 찾는", "최저가", "최단 비행시간", "공동운항", "인기 항공편"
-)
+
+def kr_time_to_24h(t_str: str) -> str:
+    """'오전 7:40' 또는 '오후 2:10'을 '07:40' / '14:10' 형식으로 변환합니다."""
+    m = re.match(r"^(오전|오후)\s*(\d{1,2}):(\d{2})$", t_str.strip())
+    if not m:
+        m2 = re.match(r"^(\d{1,2}):(\d{2})$", t_str.strip())
+        if m2:
+            return f"{int(m2.group(1)):02d}:{m2.group(2)}"
+        return t_str.strip()
+    ampm, hh, mm = m.group(1), int(m.group(2)), m.group(3)
+    if ampm == "오후" and hh < 12:
+        hh += 12
+    elif ampm == "오전" and hh == 12:
+        hh = 0
+    return f"{hh:02d}:{mm}"
 
 
-def parse_flights_from_text(body_text: str) -> dict:
-    """네이버 항공권 body.innerText에서 직항·실결제 항공편 목록을 파싱합니다."""
+def parse_google_flights_from_text(body_text: str) -> dict:
+    """Google Flights body.innerText에서 직항 편도 항공편(4인 총액 및 1인 단가)을 추출합니다."""
     if not body_text or len(body_text.strip()) < 200:
         return {"status": "error", "reason": "empty_or_blocked", "flights": []}
 
-    if "검색된 항공편이 없습니다" in body_text or "조건에 맞는 항공편이 없습니다" in body_text:
+    if (
+        "일치하는 검색결과가 없습니다" in body_text
+        or "검색결과가 없습니다" in body_text
+        or "No results returned" in body_text
+    ):
         return {"status": "soldout", "flights": []}
 
-    if "직항" not in body_text and "항공편 선택" not in body_text and "인천" not in body_text:
-        return {"status": "error", "reason": "unexpected_page_content", "flights": []}
+    if "항공편 검색" not in body_text and "Flights" not in body_text:
+        snippet = " | ".join([l.strip() for l in body_text.splitlines() if l.strip()][:15])[:250]
+        return {"status": "error", "reason": f"unexpected_page: {snippet}", "flights": []}
 
     lines = [l.strip() for l in body_text.splitlines() if l.strip()]
     flights = []
     seen = set()
 
-    time_airport_re = re.compile(r"^(\d{2}:\d{2})([A-Z]{3})$")
-    num_re = re.compile(r"^([\d,]+)$")
-    inline_price_re = re.compile(r"([\d,]+)\s*원~")
+    time_re = re.compile(r"^(?:(?:오전|오후)\s*)?\d{1,2}:\d{2}$")
+    route_re = re.compile(r"^[A-Z]{3}[–-][A-Z]{3}$")
+    price_re = re.compile(r"^₩\s*([\d,]+)$")
+
+    is_4_adults = ("성인 4명" in body_text) or ("\n4\n" in body_text) or ("4 adults" in body_text)
 
     for i, line in enumerate(lines):
-        m_dep = time_airport_re.match(line)
-        if not m_dep:
+        if not time_re.match(line):
             continue
-        dep_time, dep_code = m_dep.group(1), m_dep.group(2)
-
-        # 바로 다음 줄이 도착 시간/공항인지 확인
-        if i + 2 >= len(lines):
+        # 다음 줄이 '–' 이고 그 다음 줄이 도착 시간인지 확인
+        if i + 6 >= len(lines):
             continue
-        m_arr = time_airport_re.match(lines[i + 1])
-        if not m_arr:
-            continue
-        arr_time, arr_code = m_arr.group(1), m_arr.group(2)
-
-        # 직항 여부 체크
-        duration_line = lines[i + 2]
-        if "직항" not in duration_line or "경유" in duration_line:
+        if lines[i + 1] not in ("–", "-") or not time_re.match(lines[i + 2]):
             continue
 
-        # 항공사명 역탐색 (최대 5줄 위)
-        airline = "직항"
-        for b in range(i - 1, max(-1, i - 6), -1):
-            cand = lines[b]
-            if any(tok in cand for tok in SKIP_AIRLINE_TOKENS) or "원~" in cand or "적립" in cand:
-                continue
-            if len(cand) >= 2:
-                airline = cand
+        dep_time = kr_time_to_24h(line)
+        airline = lines[i + 3]
+
+        # 이후 6줄 이내에서 직항(Nonstop) 여부 및 요금 확인
+        is_direct = False
+        has_layover = False
+        route_str = ""
+        price_raw = None
+
+        for k in range(i + 4, min(len(lines), i + 12)):
+            cur = lines[k]
+            if time_re.match(cur):
+                break
+            if route_re.match(cur):
+                route_str = cur
+            if cur == "직항" or cur == "Nonstop":
+                is_direct = True
+            if "경유" in cur or "stop" in cur.lower():
+                has_layover = True
+            m_p = price_re.match(cur)
+            if m_p:
+                price_raw = int(m_p.group(1).replace(",", ""))
                 break
 
-        # 최종 실결제가 탐색 ('편도'/'왕복'/'다구간' 바로 뒤 숫자 우선)
-        price = None
-        for f in range(i + 3, min(len(lines), i + 12)):
-            cur = lines[f]
-            if time_airport_re.match(cur):
-                break
-            if cur in ("편도", "왕복", "다구간") and f + 1 < len(lines):
-                m_num = num_re.match(lines[f + 1])
-                if m_num:
-                    price = int(m_num.group(1).replace(",", ""))
-                    break
-                m_inl = inline_price_re.search(lines[f + 1])
-                if m_inl:
-                    price = int(m_inl.group(1).replace(",", ""))
-                    break
-            elif cur.startswith("편도 ") or cur.startswith("왕복 "):
-                m_inl = inline_price_re.search(cur)
-                if m_inl:
-                    price = int(m_inl.group(1).replace(",", ""))
-                    break
-
-        if price and price > 30000:
-            key = (airline, dep_time, dep_code, arr_code, price)
+        if is_direct and not has_layover and price_raw and price_raw > 100000:
+            price_4p = price_raw if is_4_adults else price_raw * 4
+            price_1p = round(price_4p / 4)
+            key = (airline, dep_time, route_str, price_4p)
             if key not in seen:
                 seen.add(key)
                 flights.append({
                     "airline": airline,
                     "dep_time": dep_time,
-                    "arr_time": arr_time,
-                    "route": f"{dep_code}->{arr_code}",
-                    "price": price,
+                    "route": route_str,
+                    "price": price_1p,
+                    "price_4p": price_4p,
                 })
 
     if not flights:
-        print(f"DEBUG FULL BODY ({len(body_text)} chars):\n{body_text[:2500]}")
-        snippet = " | ".join(lines[:20])[:300]
+        snippet = " | ".join(lines[:20])[:280]
         return {"status": "error", "reason": f"no_flight_cards_parsed: {snippet}", "flights": []}
 
-    flights.sort(key=lambda x: x["price"])
+    flights.sort(key=lambda x: x["price_4p"])
     return {"status": "ok", "flights": flights}
 
 
 async def fetch_all_routes() -> dict:
-    """Playwright 헤드리스 크롬으로 모든 대상 노선을 스크래핑합니다."""
+    """Playwright 헤드리스 크롬으로 Google Flights 직항 노선을 조회합니다."""
     from playwright.async_api import async_playwright
     results = {}
     async with async_playwright() as p:
@@ -143,45 +152,44 @@ async def fetch_all_routes() -> dict:
             locale="ko-KR",
             timezone_id="Asia/Seoul",
             viewport={"width": 1440, "height": 1000},
-            extra_http_headers={"Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7"},
         )
         await context.add_init_script(
             "Object.defineProperty(navigator, 'webdriver', {get: () => undefined});"
         )
 
-        targets = ["dep_0106", "ret_0110", "dep_0107"]
-        for key in targets:
-            url = URLS[key]
+        for key in ["dep_0106", "ret_0110", "dep_0107"]:
+            url = GF_URLS[key]
             page = await context.new_page()
-            api_logs = []
-            fail_logs = []
-            page.on(
-                "response",
-                lambda r: api_logs.append(f"{r.status} {r.url[:110]}")
-                if ("flight-api" in r.url or "graphql" in r.url or "search" in r.url or r.status >= 400)
-                else None,
-            )
-            page.on("requestfailed", lambda req: fail_logs.append(f"FAIL {req.failure} {req.url[:100]}"))
-            page.on("pageerror", lambda err: fail_logs.append(f"JSERR {str(err)[:120]}"))
             try:
                 await page.goto(url, wait_until="domcontentloaded", timeout=35000)
+                # 혹시 Google 동의(Consent) 창이 뜨면 수락 처리
+                try:
+                    consent_btn = page.locator("button:has-text('모두 수락'), button:has-text('Accept all')").first
+                    if await consent_btn.is_visible(timeout=2000):
+                        await consent_btn.click()
+                        await asyncio.sleep(2.0)
+                except Exception:
+                    pass
+
+                # 검색 결과 요금('₩') 또는 '검색결과가 없습니다'가 뜰 때까지 최대 20초 대기
                 try:
                     await page.wait_for_function(
                         """() => {
                             const t = document.body ? document.body.innerText : '';
-                            return t.includes('성인/') || t.includes('모든 결제수단') || t.includes('검색된 항공편이 없습니다') || t.includes('조건에 맞는 항공편이 없습니다');
+                            return (t.includes('₩') && (t.includes('직항') || t.includes('Nonstop')))
+                                || t.includes('검색결과가 없습니다')
+                                || t.includes('No results returned');
                         }""",
-                        timeout=22000,
+                        timeout=20000,
                     )
                     await asyncio.sleep(2.0)
                 except Exception:
-                    await asyncio.sleep(2.0)
+                    await asyncio.sleep(2.5)
 
                 body_text = await page.inner_text("body")
-                res = parse_flights_from_text(body_text)
+                res = parse_google_flights_from_text(body_text)
                 if res["status"] != "ok":
-                    print(f"[{key}] API logs:", api_logs[:20])
-                    print(f"[{key}] FAIL/ERR logs:", fail_logs[:15])
+                    print(f"[{key}] DEBUG BODY ({len(body_text)} chars):\n{body_text[:1500]}")
                 results[key] = res
             except Exception as exc:
                 results[key] = {"status": "error", "reason": str(exc)[:150], "flights": []}
@@ -200,7 +208,7 @@ def send_ntfy(title: str, message: str, priority: str = "high", tags: list = Non
         "message": message,
         "priority": 4 if priority == "high" else (5 if priority == "urgent" else 3),
         "tags": tags or ["airplane"],
-        "click": URLS["multi_0106"],
+        "click": NAVER_URLS["multi_0106"],
         "actions": actions or [],
     }
     resp = requests.post("https://ntfy.sh", json=payload, timeout=15)
@@ -233,46 +241,46 @@ def build_summary_text(dep_res: dict, ret_res: dict, dep07_res: dict) -> str:
     ret_list = ret_res.get("flights", [])
     dep07_list = dep07_res.get("flights", [])
 
-    lines = ["[보유카드(KB쿠팡와우/신한/모든결제) 실결제 기준]"]
+    lines = ["[Google Flights 순수 직항 실시간 (네이버 실결제 기준 동일)]"]
     if dep_list and ret_list:
         dep_low = dep_list[0]
         dep_morn = pick_morning_best(dep_list)
         ret_low = ret_list[0]
 
-        rt_low_1p = dep_low["price"] + ret_low["price"]
-        rt_low_4p = rt_low_1p * 4
+        rt_low_4p = dep_low["price_4p"] + ret_low["price_4p"]
+        rt_low_1p = round(rt_low_4p / 4)
         grand_low_4p = rt_low_4p + TRANSPORT_4P_TOTAL
 
         lines.append(
-            f"■ 1/6 가는편 최저: {dep_low['airline']}({dep_low['dep_time']}) {dep_low['price']:,}원"
+            f"■ 1/6 가는편 최저: {dep_low['airline']}({dep_low['dep_time']}) 1인 {dep_low['price']:,}원 (4인 {dep_low['price_4p']:,}원)"
         )
-        if dep_morn and dep_morn["airline"] != dep_low["airline"]:
+        if dep_morn and (dep_morn["airline"] != dep_low["airline"] or dep_morn["dep_time"] != dep_low["dep_time"]):
             lines.append(
-                f"■ 1/6 오전 선호: {dep_morn['airline']}({dep_morn['dep_time']}) {dep_morn['price']:,}원"
+                f"■ 1/6 오전 선호: {dep_morn['airline']}({dep_morn['dep_time']}) 1인 {dep_morn['price']:,}원 (4인 {dep_morn['price_4p']:,}원)"
             )
         lines.append(
-            f"■ 1/10 오는편: {ret_low['airline']}({ret_low['dep_time']}) {ret_low['price']:,}원"
+            f"■ 1/10 오는편: {ret_low['airline']}({ret_low['dep_time']}) 1인 {ret_low['price']:,}원 (4인 {ret_low['price_4p']:,}원)"
         )
         lines.append("")
         lines.append(f"• 1인 순수 왕복: {rt_low_1p:,}원")
         lines.append(f"• 4인 순수 왕복: {rt_low_4p:,}원")
         lines.append(f"• 4인 부대교통비: {TRANSPORT_4P_TOTAL:,}원 (JR특급+국내공항버스/KTX)")
-        lines.append(f"• 4인 최종 실총경비: {grand_low_4p:,}원 (1인 {grand_low_4p // 4:,}원)")
+        lines.append(f"• 4인 최종 실총경비: {grand_low_4p:,}원 (1인 {round(grand_low_4p / 4):,}원)")
 
-        if dep_morn and dep_morn["airline"] != dep_low["airline"]:
-            rt_morn_4p = (dep_morn["price"] + ret_low["price"]) * 4
+        if dep_morn and (dep_morn["airline"] != dep_low["airline"] or dep_morn["dep_time"] != dep_low["dep_time"]):
+            rt_morn_4p = dep_morn["price_4p"] + ret_low["price_4p"]
             lines.append(
-                f"  (오전출발 선택 시 4인 항공 {rt_morn_4p:,}원 / 총경비 {rt_morn_4p + TRANSPORT_4P_TOTAL:,}원)"
+                f"  (오전출발 시 4인 항공 {rt_morn_4p:,}원 / 총경비 {rt_morn_4p + TRANSPORT_4P_TOTAL:,}원)"
             )
     else:
         lines.append("• 1/6~1/10 직항: 현재 매진 또는 조회 불가")
 
     if dep07_list and ret_list:
         d07 = dep07_list[0]
-        rt07_4p = (d07["price"] + ret_list[0]["price"]) * 4
+        rt07_4p = d07["price_4p"] + ret_list[0]["price_4p"]
         lines.append("")
         lines.append(
-            f"[참고 3박4일 1/7~1/10] {d07['airline']}({d07['dep_time']}) {d07['price']:,}원 ➔ 4인 총경비 {rt07_4p + TRANSPORT_4P_TOTAL:,}원"
+            f"[참고 3박4일 1/7~1/10] {d07['airline']}({d07['dep_time']}) 1인 {d07['price']:,}원 ➔ 4인 총경비 {rt07_4p + TRANSPORT_4P_TOTAL:,}원"
         )
 
     return "\n".join(lines)
@@ -281,7 +289,7 @@ def build_summary_text(dep_res: dict, ret_res: dict, dep07_res: dict) -> str:
 async def main():
     force_notify = "--force-notify" in sys.argv or os.environ.get("FORCE_NOTIFY", "").lower() == "true"
     now_str = datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{now_str}] Starting cloud scan...")
+    print(f"[{now_str}] Starting Google Flights cloud scan...")
 
     results = await fetch_all_routes()
     dep_res = results["dep_0106"]
@@ -294,12 +302,11 @@ async def main():
 
     state = load_state()
     actions = [
-        {"action": "view", "label": "1/6 가는편(인천➔삿포로)", "url": URLS["dep_0106"]},
-        {"action": "view", "label": "1/10 오는편(하코다테➔인천)", "url": URLS["ret_0110"]},
-        {"action": "view", "label": "다구간 결합예매", "url": URLS["multi_0106"]},
+        {"action": "view", "label": "1/6 가는편(네이버 실결제)", "url": NAVER_URLS["dep_0106"]},
+        {"action": "view", "label": "1/10 오는편(네이버 실결제)", "url": NAVER_URLS["ret_0110"]},
+        {"action": "view", "label": "다구간 결합(네이버)", "url": NAVER_URLS["multi_0106"]},
     ]
 
-    # 스크래핑 오류(봇 차단/네트워크 장애) 체크
     if dep_res["status"] == "error" or ret_res["status"] == "error":
         err_count = state.get("consecutive_errors", 0) + 1
         state["consecutive_errors"] = err_count
@@ -309,8 +316,8 @@ async def main():
         print(f"Scrape error (#{err_count}): {state['last_error_msg']}")
         if force_notify or err_count == 3:
             send_ntfy(
-                title="⚠️ [클라우드 트래커] 네이버 항공권 조회 차단/오류 점검 필요",
-                message=f"클라우드 서버에서 3회 연속 조회에 실패했습니다.\n원인: {state['last_error_msg']}\n시각: {now_str}",
+                title="⚠️ [클라우드 트래커] Google Flights 조회 오류 점검 필요",
+                message=f"클라우드 조회 중 오류가 발생했습니다 (#{err_count}).\n원인: {state['last_error_msg'][:180]}",
                 priority="default",
                 tags=["warning"],
                 actions=actions,
@@ -322,7 +329,8 @@ async def main():
     curr_avail = dep_res["status"] == "ok" and ret_res["status"] == "ok"
     curr_dep_low = dep_res["flights"][0] if dep_res["status"] == "ok" else None
     curr_ret_low = ret_res["flights"][0] if ret_res["status"] == "ok" else None
-    curr_1p_rt = (curr_dep_low["price"] + curr_ret_low["price"]) if curr_avail else None
+    curr_4p_rt = (curr_dep_low["price_4p"] + curr_ret_low["price_4p"]) if curr_avail else None
+    curr_1p_rt = round(curr_4p_rt / 4) if curr_4p_rt else None
 
     prev_avail = state.get("is_available")
     prev_1p_rt = state.get("rt_1p_lowest")
@@ -334,9 +342,8 @@ async def main():
     alert_tags = ["airplane"]
 
     if prev_avail is None:
-        # 첫 클라우드 스캔 가동 완료 알림
-        alert_title = "🚀 [24시간 클라우드 트래커] 첫 가동 완료 (1/6~1/10)"
-        alert_msg = f"맥북이 꺼져 있어도 24시간 감시를 시작했습니다.\n\n{summary}"
+        alert_title = "🚀 [24시간 클라우드 트래커] Google Flights 감시 가동!"
+        alert_msg = f"맥북이 꺼져 있어도 클라우드에서 정상 가격을 조회했습니다.\n\n{summary}"
         alert_tags = ["rocket", "airplane"]
     elif prev_avail and not curr_avail:
         alert_title = "🚨 [전석 매진] 1/6~1/10 직항 좌석 소진!"
@@ -371,21 +378,21 @@ async def main():
             )
 
     if force_notify and not alert_title:
-        alert_title = "🔥 [수동 확인] 1/6~1/10 홋카이도 실결제 현황"
-        alert_msg = f"요청하신 실시간 클라우드 조회 결과입니다.\n\n{summary}"
+        alert_title = "🔥 [수동 확인] 1/6~1/10 홋카이도 클라우드 실시간 현황"
+        alert_msg = f"클라우드에서 정상 조회된 실시간 항공권 가격입니다.\n\n{summary}"
 
     if alert_title:
         send_ntfy(alert_title, alert_msg, priority=alert_prio, tags=alert_tags, actions=actions)
     else:
         print(f"No significant price change (1p RT: {curr_1p_rt} vs prev {prev_1p_rt}).")
 
-    # 상태 저장
     state.update({
         "updated_at": now_str,
+        "source": "google_flights",
         "is_available": curr_avail,
         "rt_1p_lowest": curr_1p_rt,
-        "rt_4p_lowest": (curr_1p_rt * 4) if curr_1p_rt else None,
-        "grand_4p_lowest": (curr_1p_rt * 4 + TRANSPORT_4P_TOTAL) if curr_1p_rt else None,
+        "rt_4p_lowest": curr_4p_rt,
+        "grand_4p_lowest": (curr_4p_rt + TRANSPORT_4P_TOTAL) if curr_4p_rt else None,
         "dep_0106_top3": dep_res.get("flights", [])[:3],
         "ret_0110_top2": ret_res.get("flights", [])[:2],
         "dep_0107_top2": dep07_res.get("flights", [])[:2],
