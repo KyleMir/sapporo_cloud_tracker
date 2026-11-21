@@ -1,0 +1,57 @@
+{
+  "consecutive_errors": 0,
+  "updated_at": "2026-11-21 21:17:17",
+  "source": "google_flights",
+  "is_available": true,
+  "rt_1p_lowest": 555505,
+  "rt_4p_lowest": 2222021,
+  "grand_4p_lowest": 2950221,
+  "dep_0106_top3": [
+    {
+      "airline": "진에어",
+      "dep_time": "14:10",
+      "route": "ICN–CTS",
+      "price": 294000,
+      "price_4p": 1176000
+    },
+    {
+      "airline": "에어프레미아",
+      "dep_time": "09:40",
+      "route": "ICN–CTS",
+      "price": 333400,
+      "price_4p": 1333600
+    },
+    {
+      "airline": "제주항공",
+      "dep_time": "07:15",
+      "route": "ICN–CTS",
+      "price": 344900,
+      "price_4p": 1379600
+    }
+  ],
+  "ret_0110_top2": [
+    {
+      "airline": "제주항공",
+      "dep_time": "16:30",
+      "route": "HKD–ICN",
+      "price": 261505,
+      "price_4p": 1046021
+    }
+  ],
+  "dep_0107_top2": [
+    {
+      "airline": "진에어",
+      "dep_time": "14:10",
+      "route": "ICN–CTS",
+      "price": 318000,
+      "price_4p": 1272000
+    },
+    {
+      "airline": "제주항공",
+      "dep_time": "07:15",
+      "route": "ICN–CTS",
+      "price": 319900,
+      "price_4p": 1279600
+    }
+  ]
+}
