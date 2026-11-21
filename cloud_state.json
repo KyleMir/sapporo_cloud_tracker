@@ -1,6 +1,6 @@
 {
   "consecutive_errors": 0,
-  "updated_at": "2026-11-22 02:56:23",
+  "updated_at": "2026-11-22 08:01:00",
   "source": "google_flights",
   "is_available": true,
   "rt_1p_lowest": 555456,
@@ -38,7 +38,22 @@
       "price_4p": 1045825
     }
   ],
-  "dep_0107_top2": [],
+  "dep_0107_top2": [
+    {
+      "airline": "제주항공",
+      "dep_time": "07:15",
+      "route": "ICN–CTS",
+      "price": 319900,
+      "price_4p": 1279600
+    },
+    {
+      "airline": "에어프레미아",
+      "dep_time": "09:40",
+      "route": "ICN–CTS",
+      "price": 333400,
+      "price_4p": 1333600
+    }
+  ],
   "pairs": {
     "airpremia_jeju": {
       "label": "에어프레미아+제주항공",
