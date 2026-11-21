@@ -16,11 +16,11 @@ KST = timezone(timedelta(hours=9))
 STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cloud_state.json")
 NTFY_TOPIC = os.environ.get("NTFY_TOPIC", "kylenoti_CE240803")
 
-# Google Flights 조회 URL (성인 4인, 편도, 직항, 한국어/KRW)
+# Google Flights 조회 URL (성인 4인, 편도, 직항, 한국/한국어/KRW)
 GF_URLS = {
-    "dep_0106": "https://www.google.com/travel/flights?q=Flights%20from%20ICN%20to%20CTS%20on%202027-01-06%20oneway%20nonstop%204%20adults&hl=ko&curr=KRW",
-    "ret_0110": "https://www.google.com/travel/flights?q=Flights%20from%20HKD%20to%20ICN%20on%202027-01-10%20oneway%20nonstop%204%20adults&hl=ko&curr=KRW",
-    "dep_0107": "https://www.google.com/travel/flights?q=Flights%20from%20ICN%20to%20CTS%20on%202027-01-07%20oneway%20nonstop%204%20adults&hl=ko&curr=KRW",
+    "dep_0106": "https://www.google.com/travel/flights?q=Flights%20from%20ICN%20to%20CTS%20on%202027-01-06%20oneway%20nonstop%204%20adults&hl=ko&gl=KR&curr=KRW",
+    "ret_0110": "https://www.google.com/travel/flights?q=Flights%20from%20HKD%20to%20ICN%20on%202027-01-10%20oneway%20nonstop%204%20adults&hl=ko&gl=KR&curr=KRW",
+    "dep_0107": "https://www.google.com/travel/flights?q=Flights%20from%20ICN%20to%20CTS%20on%202027-01-07%20oneway%20nonstop%204%20adults&hl=ko&gl=KR&curr=KRW",
 }
 
 # 예매용 네이버 항공권 직통 링크 (보유 카드 실결제 기준: &cardBenefit=0)
@@ -349,6 +349,7 @@ async def main():
 
     dep_flights = dep_res.get("flights", [])
     ret_flights = ret_res.get("flights", [])
+    print("ALL_DEP_0106:", [(f["airline"], f["dep_time"], f["price"]) for f in dep_flights])
 
     ap_dep = pick_airline(dep_flights, ("에어프레미아", "air premia"))
     es_dep = pick_airline(dep_flights, ("이스타", "eastar"))
