@@ -1,0 +1,63 @@
+name: Sapporo 24/7 Flight Tracker
+
+on:
+  schedule:
+    # 매 15분마다 24시간 무인 실행 (UTC 기준, 상시 동작)
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      force_notify:
+        description: '변동 여부와 무관하게 현재 실결제 가격 즉시 알림 받기'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  track-flights:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Cache Playwright Chromium
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('requirements.txt') }}
+
+      - name: Install Chromium & system deps
+        run: |
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: Run 24/7 Naver Flight Tracker
+        env:
+          NTFY_TOPIC: ${{ vars.NTFY_TOPIC || 'kylenoti_CE240803' }}
+          FORCE_NOTIFY: ${{ github.event.inputs.force_notify || 'false' }}
+        run: python3 cloud_tracker.py
+
+      - name: Save updated flight state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cloud_state.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update cloud flight state"
+            git pull --rebase || true
+            git push
+          else
+            echo "No state changes to commit."
+          fi
