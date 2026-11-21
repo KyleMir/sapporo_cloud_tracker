@@ -133,19 +133,16 @@ async def fetch_all_routes() -> dict:
     from playwright.async_api import async_playwright
     results = {}
     async with async_playwright() as p:
-        browser = await p.chromium.launch(
-            headless=True,
-            args=["--headless=new", "--disable-blink-features=AutomationControlled", "--no-sandbox"],
-        )
+        launch_args = ["--disable-blink-features=AutomationControlled", "--no-sandbox"]
+        try:
+            browser = await p.chromium.launch(channel="chromium", headless=True, args=launch_args)
+        except Exception:
+            browser = await p.chromium.launch(headless=True, args=launch_args)
+
         context = await browser.new_context(
             locale="ko-KR",
             timezone_id="Asia/Seoul",
             viewport={"width": 1440, "height": 1000},
-            user_agent=(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/131.0.0.0 Safari/537.36"
-            ),
             extra_http_headers={"Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7"},
         )
         await context.add_init_script(
@@ -157,31 +154,34 @@ async def fetch_all_routes() -> dict:
             url = URLS[key]
             page = await context.new_page()
             api_logs = []
+            fail_logs = []
             page.on(
                 "response",
-                lambda r: api_logs.append(f"{r.status} {r.url[:90]}")
-                if ("flight-api" in r.url or "graphql" in r.url or r.status >= 400)
+                lambda r: api_logs.append(f"{r.status} {r.url[:110]}")
+                if ("flight-api" in r.url or "graphql" in r.url or "search" in r.url or r.status >= 400)
                 else None,
             )
+            page.on("requestfailed", lambda req: fail_logs.append(f"FAIL {req.failure} {req.url[:100]}"))
+            page.on("pageerror", lambda err: fail_logs.append(f"JSERR {str(err)[:120]}"))
             try:
                 await page.goto(url, wait_until="domcontentloaded", timeout=35000)
-                # 항공편 카드('성인/' 가격) 또는 '검색된 항공편이 없습니다'가 뜰 때까지 최대 25초 대기
                 try:
                     await page.wait_for_function(
                         """() => {
                             const t = document.body ? document.body.innerText : '';
                             return t.includes('성인/') || t.includes('모든 결제수단') || t.includes('검색된 항공편이 없습니다') || t.includes('조건에 맞는 항공편이 없습니다');
                         }""",
-                        timeout=25000,
+                        timeout=22000,
                     )
                     await asyncio.sleep(2.0)
                 except Exception:
-                    await asyncio.sleep(3.0)
+                    await asyncio.sleep(2.0)
 
                 body_text = await page.inner_text("body")
                 res = parse_flights_from_text(body_text)
                 if res["status"] != "ok":
-                    print(f"[{key}] API logs:", api_logs[:15])
+                    print(f"[{key}] API logs:", api_logs[:20])
+                    print(f"[{key}] FAIL/ERR logs:", fail_logs[:15])
                 results[key] = res
             except Exception as exc:
                 results[key] = {"status": "error", "reason": str(exc)[:150], "flights": []}
