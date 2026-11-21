@@ -1,6 +1,6 @@
 {
   "consecutive_errors": 0,
-  "updated_at": "2026-11-21 21:17:17",
+  "updated_at": "2026-11-21 22:13:42",
   "source": "google_flights",
   "is_available": true,
   "rt_1p_lowest": 555505,
@@ -53,5 +53,24 @@
       "price": 319900,
       "price_4p": 1279600
     }
-  ]
+  ],
+  "pairs": {
+    "airpremia_jeju": {
+      "label": "에어프레미아+제주항공",
+      "available": true,
+      "dep_time": "09:40",
+      "dep_1p": 333400,
+      "dep_4p": 1333600,
+      "ret_time": "16:30",
+      "ret_1p": 261505,
+      "ret_4p": 1046021,
+      "rt_1p": 594905,
+      "rt_4p": 2379621,
+      "grand_4p": 3107821
+    },
+    "eastar_jeju": {
+      "label": "이스타항공+제주항공",
+      "available": false
+    }
+  }
 }
