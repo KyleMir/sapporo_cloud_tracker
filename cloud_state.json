@@ -1,18 +1,18 @@
 {
-  "consecutive_errors": 1,
-  "updated_at": "2026-11-22 11:57:34",
+  "consecutive_errors": 0,
+  "updated_at": "2026-11-23 03:25:05",
   "source": "google_flights",
   "is_available": true,
-  "rt_1p_lowest": 555456,
-  "rt_4p_lowest": 2221825,
-  "grand_4p_lowest": 2950025,
+  "rt_1p_lowest": 579456,
+  "rt_4p_lowest": 2317825,
+  "grand_4p_lowest": 3046025,
   "dep_0106_top3": [
     {
       "airline": "진에어",
       "dep_time": "14:10",
       "route": "ICN–CTS",
-      "price": 294000,
-      "price_4p": 1176000
+      "price": 318000,
+      "price_4p": 1272000
     },
     {
       "airline": "에어프레미아",
@@ -74,5 +74,13 @@
     }
   },
   "last_error_at": "2026-11-22 20:01:58",
-  "last_error_msg": "dep=no_flight_cards_parsed: 주요 콘텐츠로 이동 | 접근성 관련 의견 보내기 | 살펴보기 | 항공편 | 호텔 | 공유숙박 | 테마 변경 | 로그인 | 결과 로드 중 | 항공편 검색 | 편도 | 4 | 이코노미 | 서울특별시 ICN | 삿포로시 CTS | 필터 | 모든 필터(1) | 직항 | 항공사 | 수하물, ret=no_flight_cards_parsed: 주요 콘텐츠로 이동 | 접근성 관련 의견 보내기 | 살펴보기 | 항공편 | 호텔 | 공유숙박 | 테마 변경 | 로그인 | 결과 로드 중 | 항공편 검색 | 편도 | 4 | 이코노미 | 하코다테시 HKD | 서울특별시 ICN | 필터 | 모든 필터(1) | 직항 | 항공사 | 수하물"
+  "last_error_msg": "dep=no_flight_cards_parsed: 주요 콘텐츠로 이동 | 접근성 관련 의견 보내기 | 살펴보기 | 항공편 | 호텔 | 공유숙박 | 테마 변경 | 로그인 | 결과 로드 중 | 항공편 검색 | 편도 | 4 | 이코노미 | 서울특별시 ICN | 삿포로시 CTS | 필터 | 모든 필터(1) | 직항 | 항공사 | 수하물, ret=no_flight_cards_parsed: 주요 콘텐츠로 이동 | 접근성 관련 의견 보내기 | 살펴보기 | 항공편 | 호텔 | 공유숙박 | 테마 변경 | 로그인 | 결과 로드 중 | 항공편 검색 | 편도 | 4 | 이코노미 | 하코다테시 HKD | 서울특별시 ICN | 필터 | 모든 필터(1) | 직항 | 항공사 | 수하물",
+  "history": [
+    {
+      "at": "2026-11-23 03:25:05",
+      "ap_jeju_1p": 594856,
+      "ap_jeju_grand4p": 3107625,
+      "lowest_1p": 579456
+    }
+  ]
 }
