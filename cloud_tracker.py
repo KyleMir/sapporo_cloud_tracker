@@ -270,9 +270,11 @@ def build_pair_summary(dep_f, ret_f, label: str) -> dict:
 
 def format_pair_line(pair: dict) -> str:
     if not pair.get("available"):
+        if "이스타" in pair.get("label", ""):
+            return f"■ [{pair['label']}] 클라우드(구글) 미노출 ➔ 아래 네이버 버튼에서 확인(약 31.9만+24.9만)"
         return f"■ [{pair['label']}] 직항 매진/조회 불가"
     return (
-        f"■ [{pair['label']}]\n"
+        f"■ [{pair['label']}] (구글 정가 기준 · 네이버가 보통 1~2만원 더 저렴)\n"
         f"   가는편({pair['dep_time']}) {pair['dep_1p']:,}원 + 오는편({pair['ret_time']}) {pair['ret_1p']:,}원\n"
         f"   ➔ 1인 왕복 {pair['rt_1p']:,}원 | 4인 왕복 {pair['rt_4p']:,}원 | 총경비 {pair['grand_4p']:,}원"
     )
@@ -434,27 +436,7 @@ async def main():
         alert_prio = "urgent"
         alert_tags = ["bell", "sparkles"]
         alert_msg = f"매진되었던 직항 좌석이 다시 열렸습니다!\n\n{summary}"
-    elif curr_avail and prev_1p_rt is not None:
-        diff = curr_1p_rt - prev_1p_rt
-        if diff <= -MIN_DROP_KRW:
-            save_1p = -diff
-            alert_title = f"🎉 [전체 최저가 인하] 1/6~1/10 왕복 1인 -{save_1p:,}원!"
-            alert_prio = "urgent"
-            alert_tags = ["tada", "chart_with_downwards_trend"]
-            alert_msg = (
-                f"전체 최저가가 내려갔습니다!\n"
-                f"• 1인 왕복: {prev_1p_rt:,}원 ➔ {curr_1p_rt:,}원 (-{save_1p:,}원)\n"
-                f"• 4인 가족 절약: -{save_1p * 4:,}원\n\n{summary}"
-            )
-        elif diff >= MIN_HIKE_KRW:
-            alert_title = f"⚠️ [전체 최저가 상승] 1/6~1/10 왕복 1인 +{diff:,}원"
-            alert_prio = "urgent"
-            alert_tags = ["warning", "chart_with_upwards_trend"]
-            alert_msg = (
-                f"기존 최저가 좌석이 팔려 가격이 올랐습니다!\n"
-                f"• 1인 왕복: {prev_1p_rt:,}원 ➔ {curr_1p_rt:,}원 (+{diff:,}원)\n"
-                f"• 4인 가족 인상분: +{diff * 4:,}원\n\n{summary}"
-            )
+    # 진에어 등 전체 최저가 단독 변동으로는 클라우드 오탐/혼선 방지를 위해 알림 생략 (에어프레미아+제주항공만 알림)
 
     if force_notify and not alert_title:
         alert_title = "🔥 [수동 확인] 에어프레미아·이스타 + 제주항공 실시간 현황"
