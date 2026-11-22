@@ -465,6 +465,14 @@ async def main():
     else:
         print(f"No significant change. AirPremia={curr_pairs['airpremia_jeju'].get('rt_1p')}, Eastar={curr_pairs['eastar_jeju'].get('rt_1p')}")
 
+    hist = state.get("history", [])
+    hist.append({
+        "at": now_str,
+        "ap_jeju_1p": curr_pairs["airpremia_jeju"].get("rt_1p"),
+        "ap_jeju_grand4p": curr_pairs["airpremia_jeju"].get("grand_4p"),
+        "lowest_1p": curr_1p_rt,
+    })
+
     state.update({
         "updated_at": now_str,
         "source": "google_flights",
@@ -476,6 +484,7 @@ async def main():
         "dep_0106_top3": dep_flights[:3],
         "ret_0110_top2": ret_flights[:2],
         "dep_0107_top2": dep07_res.get("flights", [])[:2],
+        "history": hist[-100:],
     })
     save_state(state)
 
