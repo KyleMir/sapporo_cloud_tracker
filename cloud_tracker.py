@@ -37,7 +37,7 @@ TRANSPORT_4P_TOTAL = 728200
 
 # 알림 임계값 (1인 기준)
 MIN_DROP_KRW = 3000
-MIN_HIKE_KRW = 5000
+MIN_HIKE_KRW = 4000
 
 
 def kr_time_to_24h(t_str: str) -> str:
