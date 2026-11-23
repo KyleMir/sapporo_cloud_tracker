@@ -1,5 +1,5 @@
 {
-  "consecutive_errors": 2,
+  "consecutive_errors": 3,
   "updated_at": "2026-11-23 03:25:05",
   "source": "google_flights",
   "is_available": true,
@@ -73,8 +73,8 @@
       "available": false
     }
   },
-  "last_error_at": "2026-11-23 13:02:50",
-  "last_error_msg": "dep=no_flight_cards_parsed: 페이지 정보 | Google의 시스템이 컴퓨터 네트워크에서 비정상적인 트래픽을 감지했습니다. 이 페이지는 로봇이 아니라 실제 사용자가 요청을 보내고 있는지를 확인하는 페이지입니다. 왜 이런 현상이 발생하는 거죠? | IP주소: 130.131.215.82 | 시간: 2026-11-23T04:02:52Z | URL: https://www.google.com/sgsync?url=https%3A%2F%2Fwww.google.com%2Ftravel%2Fflights%3Fq%3DFlights%2Bfrom%2, ret=no_flight_cards_parsed: 페이지 정보 | Google의 시스템이 컴퓨터 네트워크에서 비정상적인 트래픽을 감지했습니다. 이 페이지는 로봇이 아니라 실제 사용자가 요청을 보내고 있는지를 확인하는 페이지입니다. 왜 이런 현상이 발생하는 거죠? | IP주소: 130.131.215.82 | 시간: 2026-11-23T04:03:15Z | URL: https://www.google.com/sgsync?url=https%3A%2F%2Fwww.google.com%2Ftravel%2Fflights%3Fq%3DFlights%2Bfrom%2",
+  "last_error_at": "2026-11-23 23:22:38",
+  "last_error_msg": "dep=no_flight_cards_parsed: 주요 콘텐츠로 이동 | 접근성 관련 의견 보내기 | 살펴보기 | 항공편 | 호텔 | 공유숙박 | 테마 변경 | 로그인 | 결과 로드 중 | 항공편 검색 | 편도 | 4 | 이코노미 | 서울특별시 ICN | 삿포로시 CTS | 필터 | 모든 필터(1) | 직항 | 항공사 | 수하물, ret=no_flight_cards_parsed: 주요 콘텐츠로 이동 | 접근성 관련 의견 보내기 | 살펴보기 | 항공편 | 호텔 | 공유숙박 | 테마 변경 | 로그인 | 결과 로드 중 | 항공편 검색 | 편도 | 4 | 이코노미 | 하코다테시 HKD | 서울특별시 ICN | 필터 | 모든 필터(1) | 직항 | 항공사 | 수하물",
   "history": [
     {
       "at": "2026-11-23 03:25:05",
