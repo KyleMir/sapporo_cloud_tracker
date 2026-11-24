@@ -1,32 +1,32 @@
 {
-  "consecutive_errors": 3,
-  "updated_at": "2026-11-23 03:25:05",
+  "consecutive_errors": 0,
+  "updated_at": "2026-11-24 10:51:08",
   "source": "google_flights",
   "is_available": true,
-  "rt_1p_lowest": 579456,
-  "rt_4p_lowest": 2317825,
-  "grand_4p_lowest": 3046025,
+  "rt_1p_lowest": 610538,
+  "rt_4p_lowest": 2442150,
+  "grand_4p_lowest": 3170350,
   "dep_0106_top3": [
     {
       "airline": "진에어",
       "dep_time": "14:10",
       "route": "ICN–CTS",
-      "price": 318000,
-      "price_4p": 1272000
+      "price": 318800,
+      "price_4p": 1275200
     },
     {
       "airline": "에어프레미아",
       "dep_time": "09:40",
       "route": "ICN–CTS",
-      "price": 333400,
-      "price_4p": 1333600
+      "price": 333600,
+      "price_4p": 1334400
     },
     {
       "airline": "제주항공",
       "dep_time": "07:15",
       "route": "ICN–CTS",
-      "price": 344900,
-      "price_4p": 1379600
+      "price": 345200,
+      "price_4p": 1380800
     }
   ],
   "ret_0110_top2": [
@@ -34,39 +34,24 @@
       "airline": "제주항공",
       "dep_time": "16:30",
       "route": "HKD–ICN",
-      "price": 261456,
-      "price_4p": 1045825
+      "price": 291738,
+      "price_4p": 1166950
     }
   ],
-  "dep_0107_top2": [
-    {
-      "airline": "제주항공",
-      "dep_time": "07:15",
-      "route": "ICN–CTS",
-      "price": 319900,
-      "price_4p": 1279600
-    },
-    {
-      "airline": "에어프레미아",
-      "dep_time": "09:40",
-      "route": "ICN–CTS",
-      "price": 333400,
-      "price_4p": 1333600
-    }
-  ],
+  "dep_0107_top2": [],
   "pairs": {
     "airpremia_jeju": {
       "label": "에어프레미아+제주항공",
       "available": true,
       "dep_time": "09:40",
-      "dep_1p": 333400,
-      "dep_4p": 1333600,
+      "dep_1p": 333600,
+      "dep_4p": 1334400,
       "ret_time": "16:30",
-      "ret_1p": 261456,
-      "ret_4p": 1045825,
-      "rt_1p": 594856,
-      "rt_4p": 2379425,
-      "grand_4p": 3107625
+      "ret_1p": 291738,
+      "ret_4p": 1166950,
+      "rt_1p": 625338,
+      "rt_4p": 2501350,
+      "grand_4p": 3229550
     },
     "eastar_jeju": {
       "label": "이스타항공+제주항공",
@@ -81,6 +66,12 @@
       "ap_jeju_1p": 594856,
       "ap_jeju_grand4p": 3107625,
       "lowest_1p": 579456
+    },
+    {
+      "at": "2026-11-24 10:51:08",
+      "ap_jeju_1p": 625338,
+      "ap_jeju_grand4p": 3229550,
+      "lowest_1p": 610538
     }
   ]
 }
