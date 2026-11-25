@@ -1,18 +1,18 @@
 {
-  "consecutive_errors": 4,
-  "updated_at": "2026-11-24 10:51:08",
+  "consecutive_errors": 0,
+  "updated_at": "2026-11-26 08:23:08",
   "source": "google_flights",
   "is_available": true,
-  "rt_1p_lowest": 610538,
-  "rt_4p_lowest": 2442150,
-  "grand_4p_lowest": 3170350,
+  "rt_1p_lowest": 554591,
+  "rt_4p_lowest": 2218363,
+  "grand_4p_lowest": 2946563,
   "dep_0106_top3": [
     {
       "airline": "진에어",
       "dep_time": "14:10",
       "route": "ICN–CTS",
-      "price": 318800,
-      "price_4p": 1275200
+      "price": 294600,
+      "price_4p": 1178400
     },
     {
       "airline": "에어프레미아",
@@ -25,8 +25,8 @@
       "airline": "제주항공",
       "dep_time": "07:15",
       "route": "ICN–CTS",
-      "price": 345200,
-      "price_4p": 1380800
+      "price": 345600,
+      "price_4p": 1382400
     }
   ],
   "ret_0110_top2": [
@@ -34,11 +34,26 @@
       "airline": "제주항공",
       "dep_time": "16:30",
       "route": "HKD–ICN",
-      "price": 291738,
-      "price_4p": 1166950
+      "price": 259991,
+      "price_4p": 1039963
     }
   ],
-  "dep_0107_top2": [],
+  "dep_0107_top2": [
+    {
+      "airline": "진에어",
+      "dep_time": "14:10",
+      "route": "ICN–CTS",
+      "price": 294600,
+      "price_4p": 1178400
+    },
+    {
+      "airline": "제주항공",
+      "dep_time": "07:15",
+      "route": "ICN–CTS",
+      "price": 320600,
+      "price_4p": 1282400
+    }
+  ],
   "pairs": {
     "airpremia_jeju": {
       "label": "에어프레미아+제주항공",
@@ -47,11 +62,11 @@
       "dep_1p": 333600,
       "dep_4p": 1334400,
       "ret_time": "16:30",
-      "ret_1p": 291738,
-      "ret_4p": 1166950,
-      "rt_1p": 625338,
-      "rt_4p": 2501350,
-      "grand_4p": 3229550
+      "ret_1p": 259991,
+      "ret_4p": 1039963,
+      "rt_1p": 593591,
+      "rt_4p": 2374363,
+      "grand_4p": 3102563
     },
     "eastar_jeju": {
       "label": "이스타항공+제주항공",
@@ -72,6 +87,12 @@
       "ap_jeju_1p": 625338,
       "ap_jeju_grand4p": 3229550,
       "lowest_1p": 610538
+    },
+    {
+      "at": "2026-11-26 08:23:08",
+      "ap_jeju_1p": 593591,
+      "ap_jeju_grand4p": 3102563,
+      "lowest_1p": 554591
     }
   ]
 }
