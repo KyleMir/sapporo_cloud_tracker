@@ -1,5 +1,5 @@
 {
-  "consecutive_errors": 3,
+  "consecutive_errors": 4,
   "updated_at": "2026-11-24 10:51:08",
   "source": "google_flights",
   "is_available": true,
@@ -58,7 +58,7 @@
       "available": false
     }
   },
-  "last_error_at": "2026-11-25 13:32:59",
+  "last_error_at": "2026-11-25 23:51:38",
   "last_error_msg": "dep=None, ret=no_flight_cards_parsed: 주요 콘텐츠로 이동 | 접근성 관련 의견 보내기 | 살펴보기 | 항공편 | 호텔 | 공유숙박 | 테마 변경 | 로그인 | 결과 로드 중 | 항공편 검색 | 편도 | 4 | 이코노미 | 하코다테시 HKD | 서울특별시 ICN | 필터 | 모든 필터(1) | 직항 | 항공사 | 수하물",
   "history": [
     {
