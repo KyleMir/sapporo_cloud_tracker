@@ -1,15 +1,15 @@
 {
   "consecutive_errors": 0,
-  "updated_at": "2026-11-26 08:23:08",
+  "updated_at": "2026-11-26 14:22:54",
   "source": "google_flights",
   "is_available": true,
-  "rt_1p_lowest": 554591,
-  "rt_4p_lowest": 2218363,
-  "grand_4p_lowest": 2946563,
+  "rt_1p_lowest": 554374,
+  "rt_4p_lowest": 2217494,
+  "grand_4p_lowest": 2945694,
   "dep_0106_top3": [
     {
       "airline": "진에어",
-      "dep_time": "14:10",
+      "dep_time": "14:20",
       "route": "ICN–CTS",
       "price": 294600,
       "price_4p": 1178400
@@ -34,14 +34,14 @@
       "airline": "제주항공",
       "dep_time": "16:30",
       "route": "HKD–ICN",
-      "price": 259991,
-      "price_4p": 1039963
+      "price": 259774,
+      "price_4p": 1039094
     }
   ],
   "dep_0107_top2": [
     {
       "airline": "진에어",
-      "dep_time": "14:10",
+      "dep_time": "14:20",
       "route": "ICN–CTS",
       "price": 294600,
       "price_4p": 1178400
@@ -62,11 +62,11 @@
       "dep_1p": 333600,
       "dep_4p": 1334400,
       "ret_time": "16:30",
-      "ret_1p": 259991,
-      "ret_4p": 1039963,
-      "rt_1p": 593591,
-      "rt_4p": 2374363,
-      "grand_4p": 3102563
+      "ret_1p": 259774,
+      "ret_4p": 1039094,
+      "rt_1p": 593374,
+      "rt_4p": 2373494,
+      "grand_4p": 3101694
     },
     "eastar_jeju": {
       "label": "이스타항공+제주항공",
@@ -93,6 +93,12 @@
       "ap_jeju_1p": 593591,
       "ap_jeju_grand4p": 3102563,
       "lowest_1p": 554591
+    },
+    {
+      "at": "2026-11-26 14:22:54",
+      "ap_jeju_1p": 593374,
+      "ap_jeju_grand4p": 3101694,
+      "lowest_1p": 554374
     }
   ]
 }
